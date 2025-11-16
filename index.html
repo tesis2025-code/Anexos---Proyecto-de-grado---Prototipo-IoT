@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard IoT - Monitoreo ESP32</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* LOGIN STYLES */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 3rem;
+            width: 100%;
+            max-width: 400px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .login-header h1 {
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #507dbc;
+            box-shadow: 0 0 0 3px rgba(80, 125, 188, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(80, 125, 188, 0.4);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            display: none;
+            text-align: center;
+        }
+
+        .demo-credentials {
+            background: #dae3e5;
+            border: 1px solid #bbd1ea;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+        }
+
+        .demo-credentials h3 {
+            color: #507dbc;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .demo-credentials p {
+            color: #04080f;
+            margin: 0.25rem 0;
+        }
+
+        .demo-credentials code {
+            background: white;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: #507dbc;
+            font-weight: 600;
+        }
+
+        /* DASHBOARD STYLES */
+        .dashboard-view {
+            display: none;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            color: #507dbc;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-icon {
+            width: 45px;
+            height: 32px;
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(80, 125, 188, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-logout {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-logout:hover {
+            background: #ff5252;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #dae3e5;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #04080f;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .container {
+            flex: 1;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dashboard-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 1400px;
+            height: calc(100vh - 140px);
+            min-height: 500px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #dae3e5;
+            border-top: 4px solid #507dbc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #507dbc;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .info-banner {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem 2rem;
+            font-size: 0.8rem;
+            color: #04080f;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .footer-left strong {
+            color: #507dbc;
+            font-size: 0.9rem;
+        }
+
+        .footer-right {
+            text-align: right;
+        }
+
+        .footer-authors {
+            color: #666;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        /* MENU DESPLEGABLE */
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-btn {
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(80, 125, 188, 0.4);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 110%;
+            right: 0;
+            background: white;
+            min-width: 450px;
+            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            z-index: 1000;
+            animation: slideDown 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown.active .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-header {
+            background: linear-gradient(135deg, #507dbc 0%, #04080f 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .dropdown-header h2 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .dropdown-body {
+            padding: 1.5rem;
+        }
+
+        .info-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .info-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .info-section h3 {
+            color: #507dbc;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-section p {
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-section ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+            color: #555;
+        }
+
+        .info-section ul li {
+            margin-bottom: 0.5rem;
+            line-height: 1.5;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .metric-item {
+            background: #dae3e5;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border-left: 3px solid #507dbc;
+        }
+
+        .metric-item strong {
+            color: #507dbc;
+            display: block;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .metric-item span {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        /* PANEL LATERAL DE ESTADISTICAS */
+        .stats-panel {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            padding: 1rem;
+            min-width: 250px;
+            z-index: 5;
+        }
+
+        .stats-panel h3 {
+            color: #507dbc;
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .update-time {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+
+        .toggle-stats {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 1.2rem;
+            z-index: 6;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-stats:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .stats-panel.hidden {
+            display: none;
+        }
+
+        .fullscreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+            max-width: none;
+            height: 100vh;
+            border-radius: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .login-box {
+                padding: 2rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .controls {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .user-info {
+                display: none;
+            }
+
+            .dashboard-wrapper {
+                height: calc(100vh - 120px);
+                border-radius: 8px;
+            }
+
+            .dropdown-content {
+                min-width: 90vw;
+                right: -1rem;
+            }
+
+            .stats-panel {
+                min-width: 200px;
+                font-size: 0.85rem;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .footer-right {
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- LOGIN VIEW -->
+    <div class="login-container" id="loginView">
+        <div class="login-box">
+            <div class="login-header">
+                <div class="login-icon">🔐</div>
+                <h1>Acceso al Sistema</h1>
+                <p>Monitoreo IoT - Inocuidad de la leche</p>
+            </div>
+
+            <div class="error-message" id="errorMessage">
+                Usuario o contraseña incorrectos
+            </div>
+
+            <form onsubmit="login(event)">
+                <div class="form-group">
+                    <label for="username">Usuario</label>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        placeholder="Ingrese su usuario"
+                        required
+                        autocomplete="username">
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="Ingrese su contraseña"
+                        required
+                        autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="btn-login">
+                    🔓 Iniciar Sesión
+                </button>
+            </form>
+
+            <div class="demo-credentials">
+                <h3>📋 Credenciales de Demo:</h3>
+                <p><strong>Usuario:</strong> <code>admin</code></p>
+                <p><strong>Contraseña:</strong> <code>iot2024</code></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- DASHBOARD VIEW -->
+    <div class="dashboard-view" id="dashboardView">
+        <header class="header">
+            <h1>
+                <div class="header-icon">IoT</div>
+                Visualización de datos en Power BI
+            </h1>
+            <div class="controls">
+                <div class="user-info">
+                    👤 <span id="currentUser"></span>
+                </div>
+                <div class="status">
+                    <div class="status-dot"></div>
+                    <span>Conectado</span>
+                </div>
+                <div class="dropdown" id="infoDropdown">
+                    <button class="dropdown-btn" onclick="toggleDropdown()">
+                        ℹ️ Info del Proyecto
+                    </button>
+                    <div class="dropdown-content">
+                        <div class="dropdown-header">
+                            <h2>🥛 Monitoreo IoT - Inocuidad de la leche</h2>
+                        </div>
+                        <div class="dropdown-body">
+                            <!-- OBJETIVO - EDITABLE -->
+                            <div class="info-section">
+                                <h3>🎯 Objetivo</h3>
+                                <p>
+                                    Desarrollar un sistema de trazabilidad IoT que permita medir, 
+                                    cuantificar y notificar sobre las variables críticas de inocuidad 
+                                    de la leche en los procesos de ordeño, transporte y cargue en 
+                                    tanques de enfriamiento de la leche, proporcionando herramientas 
+                                    tecnológicas accesibles para los pequeños ganaderos que les permita 
+                                    aumentar sus posibilidades de comercialización del producto en 
+                                    mercados de altos estándares de calidad.
+                                </p>
+                            </div>
+
+                            <!-- BENEFICIOS - EDITABLE -->
+                            <div class="info-section">
+                                <h3>✅ Beneficios</h3>
+                                <ul>
+                                    <li><strong>Trazabilidad completa:</strong> Seguimiento desde la fuente hasta el consumidor</li>
+                                    <li><strong>Detección temprana:</strong> Alertas automáticas ante desviaciones</li>
+                                    <li><strong>Cumplimiento normativo:</strong> Registro automático para auditorías</li>
+                                    <li><strong>Reducción de pérdidas:</strong> Prevención de deterioro del producto</li>
+                                    <li><strong>Toma de decisiones:</strong> Datos históricos para análisis y mejoras</li>
+                                </ul>
+                            </div>
+
+                            <!-- MÉTRICAS - EDITABLE -->
+                            <div class="info-section">
+                                <h3>📊 Métricas Monitoreadas</h3>
+                                <ul>
+                                    <li>🌡️ Temperatura</li>
+                                    <li>⚡ Conductividad</li>
+                                    <li>📏 Densidad</li>
+                                    <li>💧 Volumen</li>
+                                    <li>🔬 TDS (Sólidos Totales Disueltos)</li>
+                                    <li>⚗️ pH</li>
+                                    <li>🎨 Color</li>
+                                </ul>
+                            </div>
+
+                            <!-- INFORMACIÓN DEL PROYECTO -->
+                            <div class="info-section" style="border-top: 2px solid #dae3e5; padding-top: 1.5rem; margin-top: 1.5rem;">
+                                <h3>🎓 Trabajo de Grado</h3>
+                                <p style="font-size: 0.95rem; font-weight: 600; color: #04080f; margin-bottom: 1rem;">
+                                    Desarrollo de prototipo de sistema IoT de trazabilidad para garantizar 
+                                    la inocuidad de leche en los procesos de ordeño, transporte y cargue en 
+                                    tanques, adecuado para pequeños productores lecheros.
+                                </p>
+                                
+                                <div style="background: #dae3e5; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                                    <p style="margin: 0.5rem 0;"><strong>👥 Autores:</strong></p>
+                                    <ul style="margin: 0.25rem 0; padding-left: 1.5rem;">
+                                        <li>Juan Camilo Contreras Castro</li>
+                                        <li>Sebastián Felipe Gomez</li>
+                                        <li>Shariff Pinzón Forero</li>
+                                    </ul>
+                                    
+                                    <p style="margin: 0.75rem 0 0.25rem 0;"><strong>🎯 Director:</strong> Camilo Andrés Bayona, PhD</p>
+                                    <p style="margin: 0.25rem 0;"><strong>🎯 Co-Director:</strong> Juan Camilo Acosta, PhD</p>
+                                    
+                                    <p style="margin: 0.75rem 0 0.25rem 0; font-size: 0.85rem; color: #04080f;">
+                                        <strong>Pontificia Universidad Javeriana</strong><br>
+                                        Facultad de Ingeniería<br>
+                                        Departamento de Ingeniería Electrónica<br>
+                                        Bogotá, Colombia
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="refreshDashboard()">🔄 Actualizar</button>
+                <button class="btn btn-primary" onclick="toggleFullscreen()">⛶ Pantalla</button>
+                <button class="btn btn-logout" onclick="logout()">🚪 Salir</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <div class="dashboard-wrapper" id="dashboardWrapper">
+                <!-- BOTÓN TOGGLE STATS -->
+                <button class="toggle-stats" onclick="toggleStats()" title="Mostrar/Ocultar Estadísticas">
+                    📊
+                </button>
+
+                <!-- PANEL DE ESTADÍSTICAS - EDITABLE -->
+                <div class="stats-panel" id="statsPanel">
+                    <h3>📈 Estado del Sistema</h3>
+                    <div class="stat-row">
+                        <span class="stat-label">Última actualización:</span>
+                        <span class="stat-value update-time" id="lastUpdate">Hace 2 min</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Estado Power BI:</span>
+                        <span class="stat-value" style="color: #4CAF50;">✅ Activo</span>
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Cargando dashboard...</div>
+                </div>
+                <iframe 
+                    id="powerbi-iframe"
+                    title="Frontend" 
+                    src="https://app.powerbi.com/reportEmbed?reportId=ee0baaf2-4a9f-4f9e-84b8-0e985bef097a&autoAuth=true&ctid=daf7990e-8a3f-409c-9b76-2a5475098000" 
+                    allowFullScreen="true"
+                    onload="hideLoading()">
+                </iframe>
+            </div>
+        </div>
+
+        <div class="info-banner">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <strong>🎓 Pontificia Universidad Javeriana</strong>
+                    <span>Facultad de Ingeniería - Departamento de Ingeniería Electrónica</span>
+                    <span class="footer-authors">J.C. Contreras, S.F. Gomez, S. Pinzón | Dir: C.A. Bayona, PhD - Co-Dir: J.C. Acosta, PhD</span>
+                </div>
+                <div class="footer-right">
+                    <span>📡 Sistema IoT de Trazabilidad</span><br>
+                    <span style="font-size: 0.75rem; color: #666;">Trabajo de Grado - Ingeniería Mecatrónica y Mecánica</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Credenciales de demostración (en producción, esto se haría en el backend)
+        const VALID_USERS = {
+            'admin': 'iot2024',
+            'demo': 'demo123'
+        };
+
+        // Verificar si hay sesión activa al cargar
+        window.addEventListener('load', () => {
+            const loggedUser = sessionStorage.getItem('loggedUser');
+            if (loggedUser) {
+                showDashboard(loggedUser);
+            }
+        });
+
+        function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Validar credenciales
+            if (VALID_USERS[username] && VALID_USERS[username] === password) {
+                // Login exitoso
+                sessionStorage.setItem('loggedUser', username);
+                errorMessage.style.display = 'none';
+                showDashboard(username);
+            } else {
+                // Login fallido
+                errorMessage.style.display = 'block';
+                document.getElementById('password').value = '';
+                
+                // Ocultar mensaje después de 3 segundos
+                setTimeout(() => {
+                    errorMessage.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function showDashboard(username) {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'flex';
+            document.getElementById('currentUser').textContent = username;
+            updateLastUpdateTime();
+        }
+
+        function logout() {
+            if (confirm('¿Está seguro que desea cerrar sesión?')) {
+                sessionStorage.removeItem('loggedUser');
+                document.getElementById('loginView').style.display = 'flex';
+                document.getElementById('dashboardView').style.display = 'none';
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            }
+        }
+
+        function hideLoading() {
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 500);
+        }
+
+        function refreshDashboard() {
+            const loading = document.getElementById('loading');
+            const iframe = document.getElementById('powerbi-iframe');
+            
+            loading.style.display = 'flex';
+            iframe.src = iframe.src;
+        }
+
+        function toggleFullscreen() {
+            const wrapper = document.getElementById('dashboardWrapper');
+            
+            if (!wrapper.classList.contains('fullscreen')) {
+                wrapper.classList.add('fullscreen');
+            } else {
+                wrapper.classList.remove('fullscreen');
+            }
+        }
+
+        function toggleDropdown() {
+            const dropdown = document.getElementById('infoDropdown');
+            dropdown.classList.toggle('active');
+        }
+
+        function toggleStats() {
+            const panel = document.getElementById('statsPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        // Cerrar dropdown al hacer click fuera
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('infoDropdown');
+            const dropdownBtn = dropdown?.querySelector('.dropdown-btn');
+            
+            if (dropdown && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('active');
+            }
+        });
+
+        // Actualizar el tiempo de última actualización cada minuto
+        function updateLastUpdateTime() {
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (!lastUpdateEl) return;
+
+            let minutes = 2;
+            setInterval(() => {
+                minutes++;
+                if (minutes < 60) {
+                    lastUpdateEl.textContent = `Hace ${minutes} min`;
+                } else {
+                    const hours = Math.floor(minutes / 60);
+                    lastUpdateEl.textContent = `Hace ${hours}h`;
+                }
+            }, 60000); // Cada minuto
+        }
+
+        // Inicializar contador de tiempo
+        window.addEventListener('load', () => {
+            const loggedUser = sessionStorage.getItem('loggedUser');
+            if (loggedUser) {
+                showDashboard(loggedUser);
+                updateLastUpdateTime();
+            }
+        });
+        // Soporte para tecla ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const wrapper = document.getElementById('dashboardWrapper');
+                wrapper.classList.remove('fullscreen');
+            }
+        });
+    </script>
+</body>
+</html>
